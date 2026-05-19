@@ -1,0 +1,11 @@
+venv/
+.env
+*.deb
+__pycache__/
+*.pyc
+logs/
+.vscode/
+.idea/
+.elasticsearch/
+.kibana/
+data/
