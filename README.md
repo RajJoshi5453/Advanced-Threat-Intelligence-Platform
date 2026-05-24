@@ -1,93 +1,133 @@
-# Advanced Threat Intelligence Platform (TIP)
+# 🛡️ TIP — Advanced Threat Intelligence Platform
 
-## Overview
-
-The Advanced Threat Intelligence Platform (TIP) is an enterprise-grade cybersecurity solution designed for banking and financial environments.
-
-The system automatically ingests threat intelligence feeds, normalizes Indicators of Compromise (IOCs), stores data in MongoDB, integrates with Elasticsearch for indexing and analytics, and prepares data for dynamic firewall policy enforcement.
+> A real-world cybersecurity project simulating a **Finance & Banking SOC environment**.  
+> Built for internship evaluation at **Infotact Solutions**.
 
 ---
 
-## Features
+## 📌 Project Overview
 
-- Threat intelligence ingestion from AlienVault OTX
-- IOC normalization and deduplication
-- MongoDB integration
-- Elasticsearch indexing
-- Threat scoring engine
-- Async ingestion pipeline
-- Dynamic firewall automation (planned)
-- SIEM integration with ELK Stack
-- Risk-based threat analysis
+The **Threat Intelligence Platform (TIP)** automatically collects, normalizes, scores, and indexes malicious indicators (IOCs) from multiple OSINT sources — and enforces dynamic firewall rules to block threats in real time.
 
 ---
 
-## Tech Stack
-
-### Backend
-- Python
-
-### Database
-- MongoDB
-
-### Threat Intelligence Sources
-- AlienVault OTX
-- VirusTotal
-
-### SIEM Stack
-- Elasticsearch
-- Kibana
-
-### Operating System
-- Kali Linux
+## 🏗️ Architecture
+OSINT Sources (OTX + VirusTotal)
+↓
+Async Ingestion Engine
+↓
+MongoDB (raw_threats)
+↓
+Threat Scoring Engine
+↓
+Elasticsearch (ioc_threat_intel)
+↓
+Kibana Dashboard  ←──  [Week 3]
+↓
+Firewall Automation (iptables)  ←──  [Week 3]
 
 ---
 
-## Project Structure
+## ⚙️ Tech Stack
 
-```text
-app/
+| Layer | Technology |
+|---|---|
+| Language | Python 3.13 |
+| Database | MongoDB |
+| SIEM | Elasticsearch 8.13 + Kibana |
+| Threat Feeds | AlienVault OTX + VirusTotal |
+| Async | aiohttp + motor |
+| OS | Kali Linux |
+
+---
+
+## 📁 Project Structure
+tip-project/
+├── app/
+│   ├── ingestion/
+│   │   ├── otx_feed.py           # OTX threat feed ingestion
+│   │   ├── virustotal_feed.py    # VirusTotal IOC enrichment
+│   │   └── async_ingestion.py    # Async ingestion pipeline
+│   ├── analysis/
+│   │   └── threat_scoring.py     # Risk score calculation
+│   ├── indexing/
+│   │   ├── elastic_client.py     # Elasticsearch connection + index
+│   │   └── sync_mongo_to_es.py   # MongoDB → Elasticsearch sync
+│   └── database/
+│       └── mongo_client.py       # MongoDB client
 ├── ingestion/
-├── normalization/
-├── database/
-├── analysis/
-└── utils/
-Current Progress
+│   └── otx_feed.py               # Original OTX script
+├── config/
+│   └── .env                      # API keys (not committed)
+└── README.md
 
-Week 1
+---
 
-Environment setup
+## 🚀 Setup & Run
 
-MongoDB integration
+### 1. Clone & Setup
+```bash
+git clone https://github.com/yourusername/tip-project.git
+cd tip-project
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
-OTX feed ingestion
+### 2. Configure Environment
+```bash
+cp config/.env.example config/.env
+# Add your OTX_API_KEY, VT_API_KEY, MONGO_URI, DB_NAME
+```
 
-IOC storage pipeline
+### 3. Start Services
+```bash
+sudo systemctl start mongod
+sudo systemctl start elasticsearch
+```
 
-Basic normalization
+### 4. Run Pipeline
+```bash
+# Ingest from OTX
+python3 app/ingestion/async_ingestion.py
 
-Week 2
+# Enrich with VirusTotal
+python3 app/ingestion/virustotal_feed.py
 
-Elasticsearch setup
+# Score + sync to Elasticsearch
+python3 -m app.indexing.sync_mongo_to_es
+```
 
-Threat scoring engine
+---
 
-ELK integration (in progress)
+## 📊 Week Progress
 
-Future Improvements
+| Week | Focus | Status |
+|---|---|---|
+| Week 1 | OTX Ingestion + MongoDB Setup | ✅ Done |
+| Week 2 | Elasticsearch + Threat Scoring + VirusTotal + Async | ✅ Done |
+| Week 3 | Firewall Automation + Alerting + Correlation | 🔄 In Progress |
+| Week 4 | Kibana Dashboard + Docs + Testing | ⏳ Pending |
 
-Dynamic firewall automation
+---
 
-Real-time IOC correlation
+## 🔑 Key Features
 
-Kibana dashboards
+- **Multi-source OSINT ingestion** — OTX + VirusTotal
+- **Async pipeline** — faster ingestion using aiohttp + motor
+- **Risk scoring engine** — scores IOCs by source, type, and tags
+- **Elasticsearch indexing** — searchable threat database
+- **Deduplication** — no duplicate IOCs stored
+- **Modular architecture** — easy to extend with new feeds
 
-Alerting system
+---
 
-Incident response workflows
+## 👨‍💻 Author
 
-Rule rollback engine
+**Raj Joshi**  
+B.Tech IT | CHARUSAT University  
+Cybersecurity Intern — Infotact Solutions
 
-Author:Raj Joshi
+---
 
-Cybersecurity Internship Project
+> ⚠️ This project is built for educational and internship evaluation purposes only.
