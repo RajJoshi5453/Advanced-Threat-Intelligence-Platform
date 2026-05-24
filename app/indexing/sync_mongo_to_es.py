@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from app.indexing.elastic_client import get_client, create_index, index_ioc
+from app.analysis.threat_scoring import calculate_risk_score
 from dotenv import load_dotenv
 import os
 import logging
@@ -21,17 +22,17 @@ def sync():
     for doc in docs:
         ioc = {
             "indicator":  doc.get("indicator", ""),
-            "type":       doc.get("type", "unknown"),
+            "type":       doc.get("type", "IPv4"),
             "source":     doc.get("source", "OTX"),
-            "risk_score": 0.0,
             "tags":       [],
             "created_at": doc.get("fetched_at", None),
             "raw":        {}
         }
+        ioc["risk_score"] = calculate_risk_score(ioc)
         index_ioc(es, ioc)
         count += 1
 
-    logger.info(f"Synced {count} IOCs to Elasticsearch")
+    logger.info(f"Synced {count} IOCs with risk scores to Elasticsearch")
 
 if __name__ == "__main__":
     sync()
