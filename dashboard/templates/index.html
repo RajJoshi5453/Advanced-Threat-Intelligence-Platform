@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>TIP — SOC Dashboard</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#58a6ff;--red:#f85149;--orange:#d29922;--green:#3fb950;--purple:#bc8cff;--cyan:#39d353}
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px}
+    header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:12px}
+    header h1{font-size:18px;font-weight:700;color:var(--accent)}
+    header span{font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:20px}
+    .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;margin-left:auto}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+    main{padding:24px 28px;max-width:1400px;margin:0 auto}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px}
+    .stat-card .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px}
+    .stat-card .value{font-size:32px;font-weight:700}
+    .blue .value{color:var(--accent)}.red .value{color:var(--red)}.green .value{color:var(--green)}
+    .section-title{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
+    .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+    table{width:100%;border-collapse:collapse}
+    thead th{background:var(--bg);padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)}
+    tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s}
+    tbody tr:hover{background:rgba(88,166,255,0.05)}
+    td{padding:10px 14px;vertical-align:middle}
+    .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+    .badge-ipv4{background:rgba(88,166,255,0.15);color:var(--accent)}
+    .badge-domain{background:rgba(188,140,255,0.15);color:var(--purple)}
+    .badge-url{background:rgba(210,153,34,0.15);color:var(--orange)}
+    .badge-filehash{background:rgba(139,148,158,0.15);color:var(--muted)}
+    .badge-otx{background:rgba(63,185,80,0.15);color:var(--green)}
+    .badge-virustotal{background:rgba(248,81,73,0.15);color:var(--red)}
+    .risk-wrap{display:flex;align-items:center;gap:8px}
+    .risk-bar{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+    .risk-fill{height:100%;border-radius:2px}
+    .risk-num{font-size:12px;font-weight:600;min-width:28px;text-align:right}
+    .tactic-list{display:flex;flex-wrap:wrap;gap:4px}
+    .tactic{font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(88,166,255,0.1);color:var(--accent);border:1px solid rgba(88,166,255,0.2);white-space:nowrap}
+    .conf-high{color:var(--red);font-weight:700;font-size:11px}
+    .conf-medium{color:var(--orange);font-weight:700;font-size:11px}
+    .conf-low{color:var(--muted);font-weight:700;font-size:11px}
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;align-items:center;justify-content:center}
+    .modal-overlay.open{display:flex}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:10px;width:680px;max-width:95vw;max-height:85vh;overflow-y:auto;padding:24px}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .modal-header h2{font-size:15px;color:var(--accent);word-break:break-all}
+    .modal-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1}
+    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+    .info-item .key{font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+    .info-item .val{font-size:13px;font-weight:500;word-break:break-all}
+    .mitre-section h3{font-size:12px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+    .tech-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;margin-bottom:6px;background:var(--bg);border:1px solid var(--border)}
+    .tech-id{font-size:11px;font-weight:700;color:var(--cyan);min-width:75px;font-family:monospace}
+    .tech-name{font-size:12px;flex:1}
+    .tech-tactic{font-size:10px;color:var(--muted);padding:1px 6px;border-radius:3px;border:1px solid var(--border);white-space:nowrap}
+    .tech-link{font-size:11px;color:var(--accent);text-decoration:none}
+    .loading{color:var(--muted);font-size:13px;padding:12px}
+    footer{text-align:center;padding:20px;color:var(--muted);font-size:11px;border-top:1px solid var(--border);margin-top:40px}
+  </style>
+</head>
+<body>
+<header>
+  <h1>🛡 TIP — Threat Intelligence Platform</h1>
+  <span>Finance &amp; Banking SOC</span>
+  <span>Infotact Solutions</span>
+  <div class="live-dot"></div>
+</header>
+<main>
+  <div class="stats">
+    <div class="stat-card blue"><div class="label">Total IOCs</div><div class="value">{{ total }}</div></div>
+    <div class="stat-card red"><div class="label">Critical Threats</div><div class="value">{{ critical }}</div></div>
+    <div class="stat-card green"><div class="label">MITRE Mapped</div><div class="value">{{ with_mitre }}</div></div>
+    <div class="stat-card"><div class="label">MITRE Engine</div><div class="value" style="font-size:18px;color:{{ 'var(--green)' if mitre_enabled else 'var(--red)' }}">{{ '✓ Active' if mitre_enabled else '✗ Offline' }}</div></div>
+  </div>
+  <div class="section-title">Recent Threat Indicators</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Indicator</th><th>Type</th><th>Source</th><th>Risk Score</th><th>MITRE Tactics</th><th>Confidence</th><th>Fetched At</th></tr></thead>
+      <tbody>
+        {% for ioc in iocs %}
+        <tr data-id="{{ ioc._id }}">
+          <td style="font-family:monospace;font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ ioc.indicator }}</td>
+          <td><span class="badge badge-{{ ioc.type|lower }}">{{ ioc.type }}</span></td>
+          <td><span class="badge badge-{{ ioc.source|lower }}">{{ ioc.source }}</span></td>
+          <td style="min-width:120px">
+            {% set score = (ioc.risk_score|default(0))|float %}
+            <div class="risk-wrap">
+              <div class="risk-bar"><div class="risk-fill" style="width:{{ (score*100)|int }}%;background:{{ 'var(--red)' if score>=0.7 else ('var(--orange)' if score>=0.4 else 'var(--green)') }}"></div></div>
+              <span class="risk-num" style="color:{{ 'var(--red)' if score>=0.7 else ('var(--orange)' if score>=0.4 else 'var(--green)') }}">{{ score }}</span>
+            </div>
+          </td>
+          <td>
+            {% if ioc.mitre and ioc.mitre.tactics %}
+              <div class="tactic-list">
+                {% for t in ioc.mitre.tactics[:2] %}<span class="tactic">{{ t }}</span>{% endfor %}
+                {% if ioc.mitre.tactics|length > 2 %}<span class="tactic" style="color:var(--muted)">+{{ ioc.mitre.tactics|length-2 }}</span>{% endif %}
+              </div>
+            {% else %}<span style="color:var(--muted);font-size:11px">—</span>{% endif %}
+          </td>
+          <td>{% if ioc.mitre %}<span class="conf-{{ ioc.mitre.confidence }}">{{ ioc.mitre.confidence|upper }}</span>{% endif %}</td>
+          <td style="color:var(--muted);font-size:12px">{{ ioc.fetched_at or '—' }}</td>
+        </tr>
+        {% endfor %}
+        {% if not iocs %}
+        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">No IOCs found. Run ingestion pipeline first.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="m-indicator">—</h2>
+      <button class="modal-close" id="m-close">✕</button>
+    </div>
+    <div class="info-grid" id="m-info"><div class="loading">Loading...</div></div>
+    <div class="mitre-section">
+      <h3>🎯 MITRE ATT&amp;CK Mapping</h3>
+      <div id="m-mitre"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<footer>TIP — Threat Intelligence Platform &nbsp;|&nbsp; Infotact Solutions &nbsp;|&nbsp; Finance &amp; Banking SOC</footer>
+
+<script>
+document.querySelector('tbody').addEventListener('click', function(e) {
+  const row = e.target.closest('tr[data-id]');
+  if (!row) return;
+  openModal(row.getAttribute('data-id'));
+});
+
+function openModal(id) {
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('m-info').innerHTML  = '<div class="loading">Loading...</div>';
+  document.getElementById('m-mitre').innerHTML = '<div class="loading">Loading...</div>';
+  fetch('/api/ioc/' + id)
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(ioc => renderModal(ioc))
+    .catch(err => {
+      document.getElementById('m-info').innerHTML = '<div class="loading">Error: ' + err + '</div>';
+    });
+}
+
+function renderModal(ioc) {
+  document.getElementById('m-indicator').textContent = ioc.indicator;
+  const fields = [
+    ['Indicator',   ioc.indicator   || '—'],
+    ['Type',        ioc.type        || '—'],
+    ['Source',      ioc.source      || '—'],
+    ['Risk Score',  ioc.risk_score  ?? '—'],
+    ['Pulse Count', ioc.pulse_count ?? '—'],
+    ['Fetched At',  ioc.fetched_at  || '—'],
+  ];
+  document.getElementById('m-info').innerHTML = fields
+    .map(([k,v]) => `<div class="info-item"><div class="key">${k}</div><div class="val">${v}</div></div>`)
+    .join('');
+  const mitre = ioc.mitre;
+  const md = document.getElementById('m-mitre');
+  if (!mitre || !mitre.techniques || !mitre.techniques.length) {
+    md.innerHTML = '<div class="loading">No MITRE mapping for this IOC.</div>';
+    return;
+  }
+  const cc = mitre.confidence==='high'?'var(--red)':mitre.confidence==='medium'?'var(--orange)':'var(--muted)';
+  let html = `<div style="margin-bottom:12px;font-size:12px">
+    Confidence: <span style="color:${cc};font-weight:700">${mitre.confidence.toUpperCase()}</span>
+    &nbsp;|&nbsp; Tactics: <span style="color:var(--accent)">${mitre.tactics.join(' → ')}</span>
+  </div>`;
+  html += mitre.techniques.map(t =>
+    `<div class="tech-row">
+      <span class="tech-id">${t.id}</span>
+      <span class="tech-name">${t.name}</span>
+      <span class="tech-tactic">${t.tactic}</span>
+      <a class="tech-link" href="${t.url}" target="_blank">↗ mitre</a>
+    </div>`
+  ).join('');
+  md.innerHTML = html;
+}
+
+document.getElementById('m-close').onclick = () => document.getElementById('modal').classList.remove('open');
+document.getElementById('modal').onclick = function(e) { if (e.target===this) this.classList.remove('open'); };
+document.addEventListener('keydown', e => { if (e.key==='Escape') document.getElementById('modal').classList.remove('open'); });
+</script>
+</body>
+</html>

@@ -4,58 +4,84 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from datetime import datetime, timezone
 
-# Load API keys from .env
 load_dotenv("config/.env")
-
 OTX_API_KEY = os.getenv("OTX_API_KEY")
-MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = os.getenv("DB_NAME")
+MONGO_URI   = os.getenv("MONGO_URI")
+DB_NAME     = os.getenv("DB_NAME")
 
-# Connect to MongoDB
-client = MongoClient(MONGO_URI)
-db = client[DB_NAME]
+client     = MongoClient(MONGO_URI)
+db         = client[DB_NAME]
 collection = db["raw_threats"]
 
-# OTX API endpoint — fetches recently modified malicious IPs
-OTX_URL = "https://otx.alienvault.com/api/v1/indicators/export"
+OTX_EXPORT_URL = "https://otx.alienvault.com/api/v1/indicators/export"
+
+def normalize_type(otx_type):
+    mapping = {
+        "IPv4":           "IPv4",
+        "IPv6":           "IPv4",
+        "domain":         "domain",
+        "hostname":       "domain",
+        "URL":            "url",
+        "FileHash-MD5":   "FileHash",
+        "FileHash-SHA1":  "FileHash",
+        "FileHash-SHA256":"FileHash",
+        "email":          "email",
+    }
+    return mapping.get(otx_type, otx_type)
 
 def fetch_otx_threats():
     headers = {"X-OTX-API-KEY": OTX_API_KEY}
-    params = {"type": "IPv4", "limit": 50}
+    saved   = 0
 
-    print("[*] Connecting to OTX...")
-    response = requests.get(OTX_URL, headers=headers, params=params)
+    for ioc_type in ["IPv4", "domain", "URL", "FileHash-MD5"]:
+        print(f"[*] Fetching {ioc_type} indicators from OTX...")
+        params   = {"type": ioc_type, "limit": 20}
+        response = requests.get(OTX_EXPORT_URL, headers=headers, params=params)
 
-    if response.status_code != 200:
-        print(f"[!] OTX API error: {response.status_code}")
-        return
-
-    data = response.json()
-    results = data.get("results", [])
-    print(f"[+] Fetched {len(results)} indicators from OTX")
-
-    saved = 0
-    for item in results:
-        indicator = item.get("indicator")
-        if not indicator:
+        if response.status_code != 200:
+            print(f"[!] OTX API error for {ioc_type}: {response.status_code}")
             continue
 
-        # Check duplicate
-        if collection.find_one({"indicator": indicator, "source": "OTX"}):
-            continue
+        results = response.json().get("results", [])
+        print(f"[+] Got {len(results)} {ioc_type} indicators")
 
-        doc = {
-            "indicator": indicator,
-            "type": "IPv4",
-            "source": "OTX",
-            "pulse_count": item.get("pulse_info", {}).get("count", 0),
-            "fetched_at": datetime.now(timezone.utc)
-        }
+        for item in results:
+            indicator = item.get("indicator")
+            if not indicator:
+                continue
 
-        collection.insert_one(doc)
-        saved += 1
+            if collection.find_one({"indicator": indicator, "source": "OTX"}):
+                continue
 
-    print(f"[+] Saved {saved} new indicators to MongoDB")
+            pulse_info = item.get("pulse_info", {})
+            tags       = []
+
+            for pulse in pulse_info.get("pulses", []):
+                for tag in pulse.get("tags", []):
+                    t = tag.lower().strip()
+                    if t and t not in tags:
+                        tags.append(t)
+                name = pulse.get("name", "").lower()
+                for keyword in ["malware", "ransomware", "botnet", "phishing",
+                                "c2", "trojan", "banker", "ddos", "exploit",
+                                "scanner", "bruteforce", "infostealer", "keylogger"]:
+                    if keyword in name and keyword not in tags:
+                        tags.append(keyword)
+
+            doc = {
+                "indicator":   indicator,
+                "type":        normalize_type(ioc_type),
+                "source":      "OTX",
+                "tags":        tags[:5],
+                "pulse_count": pulse_info.get("count", 0),
+                "fetched_at":  datetime.now(timezone.utc)
+            }
+            collection.insert_one(doc)
+            saved += 1
+            if tags:
+                print(f"  [+] {indicator} -> tags: {tags}")
+
+    print(f"\n[+] Saved {saved} new indicators with real tags")
 
 if __name__ == "__main__":
     fetch_otx_threats()
